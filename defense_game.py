@@ -6,6 +6,8 @@ import random                       # random spawn (initial setup)
 
 from tkinter import filedialog      # file load / save
 
+##### all images are downloaded from pixabay
+
 # initialize the game engine
 pygame.init()
 
@@ -55,26 +57,43 @@ button_back = pygame.Rect(10,10,world_height/8-20,world_height/8-20)
 # class for units
 class units():
     # x, y positions and width(sx), height(sy)
-    def __init__(self,x,y,sx,sy,speed):
+    def __init__(self,x,y,sx,sy,speed,attack_range,strength,cooldown):
         self.x = x
         self.y = y
         self.sx = sx
         self.sy = sy
         self.speed = speed
+        self.attack_range = attack_range
+        self.strength = strength
+        self.cooldown = cooldown
 
-        self.isCrossed = False
-        self.rect = pygame.Rect(0,0,self.sx,self.sy)
+        self.isCrossed = False                                              # hit check
+        self.rect = pygame.Rect(0,0,self.sx,self.sy)                        # hit box
+        self.attack_box = pygame.Rect(0,0,self.attack_range,self.sy)        # attack box
+        self.in_cooldown = 0                                                # internal attack cooldown
+        self.isdead = False
 
     def move(self):
         if self.isCrossed == False:
             self.x += self.speed
             self.rect.center = [self.x,self.y]
+            self.attack_box.center = [self.x+self.speed/abs(self.speed)*(self.sx+self.attack_range/2),self.y]
     
     def crosscheck(self,rect):
-        if self.rect.colliderect(rect):
+        if self.attack_box.colliderect(rect):
             self.isCrossed = True
         else: self.isCrossed = False
     
+    def attack(self,target):
+        if self.isCrossed:
+            if self.in_cooldown == 0:
+                target.HP -= self.strength
+                self.in_cooldown = self.cooldown
+
+                if target.HP <= 0:
+                    target.isdead = True
+            else:
+                self.in_cooldown -= 1
     
 
 class my_unit(units):
@@ -102,6 +121,22 @@ class my_unit(units):
 
         self.isCrossed = False
         self.rect = pygame.Rect(0,0,self.sx,self.sy)
+        self.attack_box = pygame.Rect(0,0,self.attack_range,self.sy)
+        self.in_cooldown = 0
+        self.isdead = False
+    
+# image for units
+img_swordman = pygame.image.load("defense_game\swordman.png")
+img_swordman = pygame.transform.scale(img_swordman,(40,40))
+
+# unit icons
+img_sword = pygame.image.load("defense_game\sword_icon.png")
+img_sword = pygame.transform.scale(img_sword,(int(world_width/10)-30,int(world_width/10)-30))
+rect_sword = img_sword.get_rect()
+rect_sword.center = [world_width/20,world_height/2+80+world_width/20]
+
+# my units
+swordman = my_unit(30,0,0,10,6,0,0,"none",60,1,"swordman",0,world_height/2,40,40,img_swordman,30)
 
 # our team unit list, position data
 team_list = []
@@ -132,6 +167,9 @@ class enemy(units):
 
         self.isCrossed = False
         self.rect = pygame.Rect(world_width-self.sx,world_height/2-self.sy,self.sx,self.sy)
+        self.attack_box = pygame.Rect(0,0,self.attack_range,self.sy)
+        self.in_cooldown = 0
+        self.isdead = False
     
 
 # images for enemies
@@ -139,7 +177,7 @@ img_zombie = pygame.image.load("defense_game\zombie.png")
 img_zombie = pygame.transform.scale(img_zombie,(40,40))
 
 # enemy dictionary for all stages
-zombie = enemy(20,0,0,8,5,0,0,"none",60,-1,"zombie",0,0,40,40,img_zombie)
+zombie = enemy(20,0,0,8,6,0,0,"none",60,-1,"zombie",0,0,40,40,img_zombie)
 enemy_dict = [zombie]
 
 # enemy list for single stage
@@ -175,20 +213,22 @@ class stages():
             world.blit(mob.img,mob.rect)
 
 # stages
-s1 = stages(1,{"zombie":3},1000,150)
+s1 = stages(1,{"zombie":3},1000,300,"no")
 
 # bases (our base + enemy base)
 img_our_base = pygame.image.load("defense_game\our_base.png")
 img_our_base = pygame.transform.scale(img_our_base,(int(world_width/8),int(world_height/4)))
 rect_our_base = img_our_base.get_rect()
 rect_our_base.center = [world_width/16+10,world_height*3/8]
-base_HP = 5000
+our_base = my_unit(5000,0,0,0,0,0,0,"none",0,0,"our_base",world_width/16+10,world_height*3/8,int(world_width/8),int(world_height/4),img_our_base,0)
+max_base_HP = 5000
 
 img_enemy_base = pygame.image.load("defense_game\enemy_base.png")
 img_enemy_base = pygame.transform.scale(img_enemy_base,(int(world_width/8),int(world_height/4)))
 rect_enemy_base = img_enemy_base.get_rect()
 rect_enemy_base.center = [world_width*15/16-10,world_height*3/8]
-tower_HP = s1.base_HP
+
+enemy_base = enemy(1000,0,0,0,0,0,0,"none",0,0,"enemy_base",world_width*15/16-10,world_height*3/8,int(world_width/8),int(world_height/4),img_enemy_base)
 
 # stage buttons
 button_s1 = pygame.Rect(10,world_height/8+10,world_width/8-20,world_height/4-20)
@@ -208,6 +248,15 @@ button_s13 = pygame.Rect(world_width/2+10,world_height*3/8+10,world_width/8-20,w
 button_s14 = pygame.Rect(world_width*5/8+10,world_height*3/8+10,world_width/8-20,world_height/4-20)
 button_s15 = pygame.Rect(world_width*3/4+10,world_height*3/8+10,world_width/8-20,world_height/4-20)
 button_s16 = pygame.Rect(world_width*7/8+10,world_height*3/8+10,world_width/8-20,world_height/4-20)
+
+# summon our units
+def summon(unit):
+    global silver
+    global our_base
+
+    if silver >= unit.cost and our_base.HP > 0:
+        silver -= unit.cost
+        team_list.append(my_unit(unit.HP,unit.MP,unit.shield,unit.strength,unit.attack_range,unit.defense,unit.s_def,unit.mag,unit.cooldown,unit.speed,unit.name,unit.sx,world_height/2-unit.sy/2,unit.sx,unit.sy,unit.img,unit.cost))
 
 # text print wrapper fuction
 class text_print():
@@ -248,7 +297,12 @@ while main:
                 sys.exit()
             finally:
                 main = False
-            
+
+        # while battle, summon our units
+        if event.type == pygame.KEYUP:
+            if page == "battle":
+                if event.key == pygame.K_1: summon(swordman)
+
         if event.type == pygame.MOUSEBUTTONDOWN:
             pos = pygame.mouse.get_pos()
 
@@ -279,7 +333,8 @@ while main:
                         page = "battle"
                         stage_now = s1
                         stage_now.setup()
-                        tower_HP = stage_now.base_HP
+                        our_base.HP = 5000
+                        enemy_base.HP = stage_now.base_HP
                         spawn_time = stage_now.spawn
             
             elif page == "unit_list":
@@ -354,10 +409,22 @@ while main:
         world.blit(img_our_base,rect_our_base)
         world.blit(img_enemy_base,rect_enemy_base)
 
+        # draw HP of our base
+        pygame.draw.rect(world,RED,[10,world_height/4-60,world_width/8*our_base.HP/max_base_HP,40])
+        pygame.draw.rect(world,BLACK,[10,world_height/4-60,world_width/8,40],2)
+        text_print(f"HP : {our_base.HP}/{max_base_HP}",world_width/16+10,world_height/4-40).printout()
+
+        # draw HP of enemy base
+        pygame.draw.rect(world,RED,[world_width*13/16,world_height/4-60,world_width/8*enemy_base.HP/stage_now.base_HP,40])
+        pygame.draw.rect(world,BLACK,[world_width*13/16,world_height/4-60,world_width/8,40],2)
+        text_print(f"HP : {enemy_base.HP}/{stage_now.base_HP}",world_width*7/8,world_height/4-40).printout()
+
         # draw the field
         pygame.draw.rect(world,BROWN,[0,world_height/2,world_width,world_height/2+10])
 
         # draw unit selector
+        world.blit(img_sword,rect_sword)
+
         pygame.draw.rect(world,BLACK,[10,world_height/2+80,world_width/10-20,world_width/10-20],2)
         pygame.draw.rect(world,BLACK,[world_width/10+10,world_height/2+80,world_width/10-20,world_width/10-20],2)
         pygame.draw.rect(world,BLACK,[world_width/5+10,world_height/2+80,world_width/10-20,world_width/10-20],2)
@@ -421,13 +488,37 @@ while main:
         else:
             spawn_time -= 1
 
+        # enemy dead check
+        if enemy_list:
+            dead_mob_box = []
+            for mob in enemy_list:
+                if mob.isdead == True:
+                    dead_mob_box.append(enemy_list.index(mob))
+            
+            for i in range(len(dead_mob_box)):
+                enemy_list.pop(dead_mob_box[-1])
+            
+            dead_mob_box.clear()
+
+        # dead check for our team members
+        if team_list:
+            dead_team_box = []
+            for unit in team_list:
+                if unit.isdead == True:
+                    dead_team_box.append(team_list.index(unit))
+            
+            for i in range(len(dead_team_box)):
+                team_list.pop(dead_team_box[-1])
+            
+            dead_team_box.clear()
+
         # rect cross check
         # find unit whose position is closest to enemy base
         vanguard_index = 0
         if team_num != len(team_list):
             if len(team_list) > team_num:
                 for i in range(len(team_list)-team_num):
-                    team_position.append(team_list[team_num+i].x+team_list[team_num+i].speed/abs(team_list[team_num+i].speed)*team_list[team_num+i].sx/2)
+                    team_position.append(team_list[team_num+i].x+team_list[team_num+i].sx/2)
                 
                 vanguard_index = team_position.index(max(team_position))
             
@@ -443,7 +534,7 @@ while main:
         if enemy_num != len(enemy_list):
             if len(enemy_list) > enemy_num:
                 for i in range(len(enemy_list)-enemy_num):
-                    enemy_position.append(enemy_list[enemy_num+i].x+enemy_list[enemy_num+i].speed/abs(enemy_list[enemy_num+i].speed)*enemy_list[enemy_num+i].sx/2)
+                    enemy_position.append(enemy_list[enemy_num+i].x-enemy_list[enemy_num+i].sx/2)
                 
                 pop_index = enemy_position.index(min(enemy_position))
             
@@ -459,14 +550,16 @@ while main:
             if team_list:
                 mob.crosscheck(team_list[vanguard_index].rect)
             
-            mob.crosscheck(rect_our_base)
+            if team_list == [] or mob.isCrossed == False:
+                mob.crosscheck(rect_our_base)
         
         # collision test for units
         for unit in team_list:
             if enemy_list:
                 unit.crosscheck(enemy_list[pop_index].rect)
             
-            unit.crosscheck(rect_enemy_base)
+            if enemy_list == [] or unit.isCrossed == False:
+                unit.crosscheck(rect_enemy_base)
 
         # our unit, enemy move
         if team_list:
@@ -478,6 +571,33 @@ while main:
             for mob in enemy_list:
                 mob.move()
                 world.blit(mob.img,mob.rect)
+        
+        # our unit, enemy attack
+        if team_list:
+            for unit in team_list:
+                if enemy_list:
+                    if unit.attack_box.colliderect(enemy_list[pop_index].rect):
+                        unit.attack(enemy_list[pop_index])
+                
+                    elif unit.attack_box.colliderect(rect_enemy_base):
+                        unit.attack(enemy_base)
+                
+                else:
+                    if unit.attack_box.colliderect(rect_enemy_base):
+                        unit.attack(enemy_base)
+
+        if enemy_list:
+            for mob in enemy_list:
+                if team_list:
+                    if mob.attack_box.colliderect(team_list[vanguard_index].rect):
+                        mob.attack(team_list[vanguard_index])
+                
+                    elif mob.attack_box.colliderect(rect_our_base):
+                        mob.attack(our_base)
+                
+                else:
+                    if mob.attack_box.colliderect(rect_our_base):
+                        mob.attack(our_base)
 
     elif page == "character":
         # button : back to the main menu
