@@ -316,6 +316,7 @@ def cal_cn():
     if len(para_set) == 9:
         if conc > 0:
             cn = 100/conc*para_set[6]/(para_set[6]+gamma*para_set[2])
+            cn = round(cn,3)
             print(cn)
 
 def cal_acn():
@@ -329,9 +330,12 @@ def cal_acn():
         if len(para_sets[0])==9:
             for i in range(len(para_sets)):
                 cn = 100/conc*para_sets[i][6]/(para_sets[i][6]+gamma*para_sets[i][2])
+                cn = round(cn,3)
                 cn_set.append(cn)
 
             print(cn_set)
+            print(f"Average of C.N : {np.mean(cn_set):.2f}")
+            print(f"Standard deviation of C.N : {np.std(cn_set):.3f} ")
 
 ####### basic setting for the window size, location and resizability
 window_main = tkinter.Tk()
