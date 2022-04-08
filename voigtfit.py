@@ -99,19 +99,50 @@ def openfiles():
 
             f.close()
 
-            ax1.plot(xdata[0],ydata[0])
+            ax1.clear()
+            ax1.set_xlabel('Wavenumber (cm$^{-1}$)')
+            ax1.set_ylabel('Absorbance')
+            ax1.plot(xdata[i],ydata[i])
             canvas.draw()
         
         else: print(filenames[i])
 
 def draw_graph():
+    # search the selected file
+    menu = option_menu['menu']
+    value = variable.get()
+    index = menu.index(value)
+
+    # get the drawing range data
+    if int(entry_lb.get()): x1 = int(entry_lb.get())
+    if int(entry_ub.get()): x2 = int(entry_ub.get())
+
+    # get data
+    temp_x = []
+    temp_y = []
+
+    if x1 < xdata[0][-1] or x2 > xdata[0][0]:
+        print("Error")
+
+    elif len(xdata) > 0:
+        for i in range(len(xdata[index])):
+            if x1 <= xdata[index][i] <= x2:
+                temp_x.append(xdata[index][i])
+                temp_y.append(ydata[index][i])
+
+    # drawing the graph
+    ax1.clear()
+    ax1.plot(temp_x,temp_y,color='black')
+    ax1.set_xlabel('Wavenumber (cm$^{-1}$)')
+    ax1.set_ylabel('Absorbance')
+    canvas.draw()
+
+def draw_fit():
     global xdata_temp
     global ydata_temp
     global para_set
 
     if len(xdata_temp):
-        ax1.clear()
-
         # 1 : plot raw data
         ax1.plot(xdata_temp,ydata_temp,color='black')
         ax1.axis([min(xdata_temp),max(xdata_temp),0,max(ydata_temp)*1.1])
@@ -179,11 +210,7 @@ def draw_graph():
         canvas.draw()
 
     else:
-        ax1.clear()
-        ax1.plot(xdata[0],ydata[0],color='black')
-        ax1.set_xlabel('Wavenumber (cm$^{-1}$)')
-        ax1.set_ylabel('Absorbance')
-        canvas.draw()
+        print("You must fit the data before drawing the fitting result")
 
 # voigt fitting function
 def voigt_fit(index):
@@ -371,6 +398,7 @@ canvas1.place(x=50,y=0,anchor="nw")
     # button set
 button_open = tkinter.Button(window_main,text="Open files",command=openfiles)
 button_draw = tkinter.Button(window_main,text="Draw graph",command=draw_graph)
+button_drawfit = tkinter.Button(window_main,text="Draw fitting results",command=draw_fit)
 button_vfit = tkinter.Button(window_main,text="Data Fit",command=call_voigtfit)
 button_afit = tkinter.Button(window_main,text="Fit all data",command=all_voigtfit)
 button_cn = tkinter.Button(window_main,text="Calculate coordination number",command=cal_cn)
@@ -395,7 +423,7 @@ entry_ub.insert(0, "1800")
     # peak positions input
 label_peaks = ttk.Label(window_main,text="peak positions (cm\u207B\u00B9) :")
 entry_peaks = tkinter.Entry(window_main,width=20)
-entry_peaks.insert(0,"1752")
+entry_peaks.insert(0,"1752,1720")
 
     # input for calculation of coordination number
 label_conc = ttk.Label(window_main,text="concentration (mol %) :")
@@ -409,10 +437,11 @@ entry_gamma.insert(0,"1.4")
 # positioning buttons, entry, and labels
 button_open.place(x=20,y=50)
 button_draw.place(x=50,y=150,anchor="nw")
+button_drawfit.place(x=20,y=180,anchor="nw")
 button_vfit.place(x=150,y=150,anchor="nw")
 button_afit.place(x=220,y=150,anchor="nw")
-button_cn.place(x=30,y=260)
-button_acn.place(x=220,y=260)
+button_cn.place(x=30,y=290)
+button_acn.place(x=220,y=290)
 
 option_menu.place(x=100,y=50)
 
@@ -424,10 +453,10 @@ canvas1.create_window(240,100,window=entry_ub)
 label_peaks.place(x=10,y=120)
 canvas1.create_window(170,130,window=entry_peaks)
 
-label_conc.place(x=10,y=190)
-label_gamma.place(x=50,y=220)
-canvas1.create_window(130,200,window=entry_conc)
-canvas1.create_window(130,230,window=entry_gamma)
+label_conc.place(x=10,y=220)
+label_gamma.place(x=50,y=250)
+canvas1.create_window(130,230,window=entry_conc)
+canvas1.create_window(130,260,window=entry_gamma)
 
 # toolbar generation -> graph canvas visualization
 toolbar = NavigationToolbar2Tk(canvas,window_main)
