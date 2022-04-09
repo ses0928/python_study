@@ -137,6 +137,32 @@ def draw_graph():
     ax1.set_ylabel('Absorbance')
     canvas.draw()
 
+def draw_all():
+    global xdata
+    global ydata
+
+    # get the drawing range data
+    if int(entry_lb.get()): x1 = int(entry_lb.get())
+    if int(entry_ub.get()): x2 = int(entry_ub.get())
+
+    ax1.clear()
+    ax1.set_xlabel('Wavenumber (cm$^{-1}$)')
+    ax1.set_ylabel('Absorbance')
+
+    # get data and draw graphs one by one
+    for i in range(len(xdata)):
+        temp_x = []
+        temp_y = []
+
+        for j in range(len(xdata[0])):
+            if x1 <= xdata[i][j] <= x2:
+                temp_x.append(xdata[i][j])
+                temp_y.append(ydata[i][j])
+        
+        ax1.plot(temp_x,temp_y)
+
+    canvas.draw()
+
 def draw_fit():
     global xdata_temp
     global ydata_temp
@@ -399,6 +425,7 @@ canvas1.place(x=50,y=0,anchor="nw")
 button_open = tkinter.Button(window_main,text="Open files",command=openfiles)
 button_draw = tkinter.Button(window_main,text="Draw graph",command=draw_graph)
 button_drawfit = tkinter.Button(window_main,text="Draw fitting results",command=draw_fit)
+button_drawall = tkinter.Button(window_main,text="Draw all",command=draw_all)
 button_vfit = tkinter.Button(window_main,text="Data Fit",command=call_voigtfit)
 button_afit = tkinter.Button(window_main,text="Fit all data",command=all_voigtfit)
 button_cn = tkinter.Button(window_main,text="Calculate coordination number",command=cal_cn)
@@ -438,6 +465,7 @@ entry_gamma.insert(0,"1.4")
 button_open.place(x=20,y=50)
 button_draw.place(x=50,y=150,anchor="nw")
 button_drawfit.place(x=20,y=180,anchor="nw")
+button_drawall.place(x=150,y=180,anchor="nw")
 button_vfit.place(x=150,y=150,anchor="nw")
 button_afit.place(x=220,y=150,anchor="nw")
 button_cn.place(x=30,y=290)
