@@ -62,6 +62,7 @@ def openfiles():
     global ydata
     global loaded_files
     global num_files
+    global filenames
 
     if len(xdata):
         xdata = []
@@ -170,6 +171,7 @@ def draw_fit():
 
     if len(xdata_temp):
         # 1 : plot raw data
+        ax1.clear()
         ax1.plot(xdata_temp,ydata_temp,color='black')
         ax1.axis([min(xdata_temp),max(xdata_temp),0,max(ydata_temp)*1.1])
         ax1.set_xlabel('Wavenumber (cm$^{-1}$)')
@@ -245,6 +247,7 @@ def voigt_fit(index):
     global xdata_temp
     global ydata_temp
     global para_set
+    global filenames
 
     if len(xdata_temp):
         xdata_temp = []
@@ -322,21 +325,33 @@ def voigt_fit(index):
         lb_tuple = tuple(lb)
         ub_tuple = tuple(ub)
 
+        # get filename string
+        name = filenames[index].split('/')
+        file_name = name[-1]
+
+        # fitting part
         if peak_num == 1:
             popt, pcov = curve_fit(voigt,xdata_temp,ydata_temp,p0=initial,bounds=(lb_tuple,ub_tuple))
-            print(popt)
+            print(file_name)
+            print(f"1st peak width : {popt[1]:.2f}, 1st peak area : {popt[2]:.2f}, 1st peak position : {popt[3]:.2f} cm-1")
+            print(f"background : {popt[-1]:.3f}\n")
         
         elif peak_num == 2:
             popt, pcov = curve_fit(voigt2p,xdata_temp,ydata_temp,p0=initial,bounds=(lb_tuple,ub_tuple))
-            print(f"1st peak width : {popt[1]:.2f}, 1st peak area : {popt[2]:.2f}, 1st peak position : {popt[3]:.2f} cm-1\n")
-            print(f"2nd peak width : {popt[5]:.2f}, 2nd peak area : {popt[6]:.2f}, 2nd peak position : {popt[7]:.2f} cm-1\n")
-            print(f"background : {popt[-1]:.3f}")
+            print(file_name)
+            print(f"1st peak width : {popt[1]:.2f}, 1st peak area : {popt[2]:.2f}, 1st peak position : {popt[3]:.2f} cm-1")
+            print(f"2nd peak width : {popt[5]:.2f}, 2nd peak area : {popt[6]:.2f}, 2nd peak position : {popt[7]:.2f} cm-1")
+            print(f"background : {popt[-1]:.3f}\n")
             
             # print(popt)
         
         elif peak_num == 3:
             popt, pcov = curve_fit(voigt3p,xdata_temp,ydata_temp,p0=initial,bounds=(lb_tuple,ub_tuple))
-            print(popt)
+            print(file_name)
+            print(f"1st peak width : {popt[1]:.2f}, 1st peak area : {popt[2]:.2f}, 1st peak position : {popt[3]:.2f} cm-1")
+            print(f"2nd peak width : {popt[5]:.2f}, 2nd peak area : {popt[6]:.2f}, 2nd peak position : {popt[7]:.2f} cm-1")
+            print(f"2nd peak width : {popt[9]:.2f}, 2nd peak area : {popt[10]:.2f}, 2nd peak position : {popt[11]:.2f} cm-1")
+            print(f"background : {popt[-1]:.3f}\n")
 
         para_set = popt
 
