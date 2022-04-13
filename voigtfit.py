@@ -109,6 +109,8 @@ def openfiles():
         else: print(filenames[i])
 
 def draw_graph():
+    global filenames
+
     # search the selected file
     menu = option_menu['menu']
     value = variable.get()
@@ -131,16 +133,22 @@ def draw_graph():
                 temp_x.append(xdata[index][i])
                 temp_y.append(ydata[index][i])
 
+    # get filename
+    temp_name = filenames[index].split("/")
+    name = temp_name[-1]
+
     # drawing the graph
     ax1.clear()
-    ax1.plot(temp_x,temp_y,color='black')
+    ax1.plot(temp_x,temp_y,color='black',label=name)
     ax1.set_xlabel('Wavenumber (cm$^{-1}$)')
     ax1.set_ylabel('Absorbance')
+    ax1.legend(bbox_to_anchor=(1.05,0.75),loc="upper left")
     canvas.draw()
 
 def draw_all():
     global xdata
     global ydata
+    global filenames
 
     # get the drawing range data
     if int(entry_lb.get()): x1 = int(entry_lb.get())
@@ -160,8 +168,13 @@ def draw_all():
                 temp_x.append(xdata[i][j])
                 temp_y.append(ydata[i][j])
         
-        ax1.plot(temp_x,temp_y)
+        # get filenames
+        temp_name = filenames[i].split("/")
+        name = temp_name[-1]
 
+        ax1.plot(temp_x,temp_y,label=name)
+
+    ax1.legend(bbox_to_anchor=(1.05,0.75),loc="upper left")
     canvas.draw()
 
 def draw_fit():
@@ -409,8 +422,8 @@ def cal_acn():
 window_main = tkinter.Tk()
 
 window_main.title("Voigt fitting")
-window_main.geometry("900x600+100+100")
-window_main.resizable(False,False)
+window_main.geometry("1100x600+100+100")
+window_main.resizable(True,True)        # default : (False, False)
 
 # window close
 def wclose():
@@ -425,8 +438,8 @@ window_main.config(menu=menubar)
 window_main.protocol("WM_DELETE_WINDOW",wclose)
 
 # figure generation
-fig = plt.figure(figsize=(5,4), dpi=100)
-ax1 = fig.add_subplot(1,1,1)
+fig = plt.figure(figsize=(10,4), dpi=100)
+ax1 = fig.add_subplot(1,2,1)
 ax1.set_xlabel('Wavenumber (cm$^{-1}$)')
 ax1.set_ylabel('Absorbance')
 canvas = FigureCanvasTkAgg(fig,master=window_main)
@@ -505,7 +518,7 @@ canvas1.create_window(130,260,window=entry_gamma)
 toolbar = NavigationToolbar2Tk(canvas,window_main)
 toolbar.update()
 toolbar.pack(side=tkinter.BOTTOM,fill=tkinter.X)
-canvas.get_tk_widget().pack(side=tkinter.RIGHT)
+canvas.get_tk_widget().place(x=350,y=50)     # default : pack(side=tkinter.RIGHT)
 
 # main loop. need for maintaing the window
 window_main.mainloop()
