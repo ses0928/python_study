@@ -45,7 +45,7 @@ def openfiles():
     for name in filenames:
         menu.add_command(label=name, command=lambda name=name: variable.set(name))
     
-def draw_graph(mode):
+def draw_graph(mode,ind=0):
     # x, y, z data of selected file
     global xdata
     global ydata
@@ -56,14 +56,17 @@ def draw_graph(mode):
     global label_Tw
 
     # load index of selected file on menu
-    menu = option_menu['menu']
-    value = variable.get()
-    index = menu.index(value)
+    if mode != "all":
+        menu = option_menu['menu']
+        value = variable.get()
+        index = menu.index(value)
+    else:
+        index = ind
 
     # get file name
     Tw_text = filenames[index].split("=")[-1]
     Tw_text = Tw_text.split(".dat")[0]
-    label_Tw['text'] = f"Tw = {Tw_text}"
+    label_Tw['text'] = f"Tw = {Tw_text}  "
 
     # file load + insert data
     f = open(filenames[index],'rt',encoding='utf-8')
@@ -185,6 +188,7 @@ def draw_graph(mode):
     else:
         print("Insert *.dat file")
 
+# plot graphs with draw_graph function
 def plot():
     # x, y, z data of selected file
     global xdata
@@ -208,6 +212,32 @@ def fullplot():
     global label_Tw
 
     draw_graph("raw")
+
+def savefig(auto=False,getname = ""):
+    #extent = ax_main.get_window_extent().transformed(fig.dpi_scale_trans.inverted())
+    extent = ax_main.get_tightbbox(fig.canvas.get_renderer(),call_axes_locator=True,bbox_extra_artists=None).transformed(fig.dpi_scale_trans.inverted())
+    if auto:
+        savename = getname
+    else:
+        savename = filedialog.asksaveasfilename(defaultextension=("png file",".png"))
+    #fig.savefig(savename,bbox_inches=extent.expanded(1.2,1.2))
+    fig.savefig(savename,bbox_inches=extent.expanded(1.0,1.1))
+
+def saveall():
+    global num_files
+
+    savename = filedialog.asksaveasfilename()
+    for i in range(num_files):
+        # 1. draw graph for each graph
+        draw_graph("all",i)
+        
+        # 2. set savename for each file
+        Tw_text = filenames[i].split("=")[-1]
+        Tw_text = Tw_text.split(".dat")[0]
+        name = savename + Tw_text + ".png"
+        savefig(True,name)
+    
+    draw_graph("selected")
 
 #####################  GUI code #############################
 window_main = tkinter.Tk()
@@ -233,7 +263,7 @@ gs = gridspec.GridSpec(nrows=3,ncols=3)
 ax1 = fig.add_subplot(gs[0,0:2])
 ax_main = fig.add_subplot(gs[1:3,0:2])
 ax2 = fig.add_subplot(gs[1:3,2])
-fig.subplots_adjust(left=0.1,top=0.95)
+fig.subplots_adjust(left=0.1,top=0.95,wspace=0.4,hspace=0.34)
 
 ax_main.set_xlabel('$\omega_m$ (cm$^{-1}$)')
 ax_main.set_ylabel('$\omega_t$ (cm$^{-1}$)')
@@ -249,6 +279,8 @@ canvas1.place(x=50,y=0,anchor="nw")
 button_open = tkinter.Button(window_main,text="Open files",command=openfiles)
 button_plot = tkinter.Button(window_main,text="Plot 2D graph",command=plot)
 button_fullplot = tkinter.Button(window_main,text="Plot raw data",command=fullplot)
+button_save = tkinter.Button(window_main,text="save 2D spectrum",command=savefig)
+button_saveall = tkinter.Button(window_main,text="save all 2D spectra",command=saveall)
 
 # option menu setting
 variable = tkinter.StringVar(window_main)
@@ -284,7 +316,7 @@ label_cmap = ttk.Label(window_main,text="Color map of graph :")
 
 # option menu for color map
 variable2 = tkinter.StringVar(window_main)
-variable2.set("loaded files")
+variable2.set("RdYlBu_r")
 option_menu2 = tkinter.OptionMenu(window_main,variable2,*loaded_files2)
 option_menu2.configure(state='normal')
 option_menu2.pack()
@@ -292,8 +324,10 @@ option_menu2.pack()
 # positioning buttons, entry, and labels
 button_open.place(x=20,y=50)
 label_Tw.place(x=180,y=55)
-button_plot.place(x=20,y=210)
-button_fullplot.place(x=110,y=210)
+button_plot.place(x=60,y=210)
+button_fullplot.place(x=180,y=210)
+button_save.place(x=40,y=240)
+button_saveall.place(x=180,y=240)
 
 label_wm.place(x=40,y=90)
 label_wt.place(x=40,y=120)
