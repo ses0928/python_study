@@ -47,6 +47,9 @@ If you want to save this figure (2D spectrum only), just click "save 2D spectrum
 5) For repeatation 2)~4) processes at once, click "save all 2D spectra" button.
 All files will be saved as png files and have same range determined at 3) process.
 
+6) When you click the 2D spectrum, horizontal and vertical slice graphs will be shown.
+mouse position is automatically changed to coordinates of spectrum and then slice graphs at the point are drawn.
+
 -----------------------------------------------------------------------------------
 
 3. defense_game

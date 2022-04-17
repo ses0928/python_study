@@ -50,6 +50,9 @@ def draw_graph(mode,ind=0):
     global xdata
     global ydata
     global zdata
+    global wm_data
+    global wt_data
+    global int_data
     global filenames
 
     global Tw_text
@@ -147,6 +150,7 @@ def draw_graph(mode,ind=0):
             for j in range(xind1,xind2+1):
                 int_data[i-yind1].append(zdata[i][j])
 
+        ''' normalization of 2D data. it's not necessary..
         # size rearrangement of int_data
         # find maximum value of zdata (2D array)
         temp_max = []
@@ -157,6 +161,7 @@ def draw_graph(mode,ind=0):
         for i in range(len(int_data)):
             for j in range(len(int_data[0])):
                 int_data[i][j] = round(int_data[i][j]/z_max,3)
+        '''
 
         # draw 2D contour plot of xdata, ydata, zdata
         ax_main.clear()
@@ -188,6 +193,10 @@ def draw_graph(mode,ind=0):
     else:
         print("Insert *.dat file")
 
+# flags for plots ginput
+p_flag = False
+fp_flag = False
+
 # plot graphs with draw_graph function
 def plot():
     # x, y, z data of selected file
@@ -199,7 +208,12 @@ def plot():
     global Tw_text
     global label_Tw
 
+    global p_flag
+    global fp_flag
+
     draw_graph("selected")
+    p_flag = True
+    fp_flag = False
 
 def fullplot():
     # x, y, z data of selected file
@@ -211,8 +225,14 @@ def fullplot():
     global Tw_text
     global label_Tw
 
-    draw_graph("raw")
+    global p_flag
+    global fp_flag
 
+    draw_graph("raw")
+    p_flag = False
+    fp_flag = True
+
+# figure save code
 def savefig(auto=False,getname = ""):
     #extent = ax_main.get_window_extent().transformed(fig.dpi_scale_trans.inverted())
     extent = ax_main.get_tightbbox(fig.canvas.get_renderer(),call_axes_locator=True,bbox_extra_artists=None).transformed(fig.dpi_scale_trans.inverted())
@@ -238,6 +258,79 @@ def saveall():
         savefig(True,name)
     
     draw_graph("selected")
+
+def callback(event):
+    global p_flag       # flag for raw 2D spectrum plot or selected range of 2D spectrum plot
+    global fp_flag
+
+    global xdata        # data
+    global ydata
+    global zdata
+    global wm_data
+    global wt_data
+    global int_data
+
+    global horiz_x      # sliced spectra data
+    global int1
+    global vert_y
+    global int2
+
+    [x,y] = ax_main.transData.inverted().transform((event.x,899-event.y))
+    [x,y] = [round(x),round(y)]
+
+    if fp_flag and p_flag:
+        print("Error detected. please re-plot the graph.")
+        p_flag = False
+        fp_flag = False
+    
+    elif fp_flag:
+        # set index
+        ind1 = xdata.index(x)
+        ind2 = ydata.index(y)
+
+        # draw horizontal slice data
+        horiz_x = xdata
+        int1 = zdata[ind2]
+
+        ax1.clear()
+        ax1.plot(horiz_x,int1)
+
+        # draw vertical slice data
+        vert_y = ydata
+        int2 = []
+        for i in range(len(ydata)):
+            int2.append(zdata[i][ind1])
+        
+        ax2.clear()
+        ax2.plot(int2,vert_y)
+
+        # finally draw the slice graphs
+        canvas.draw()
+    
+    elif p_flag:
+        # set index
+        ind1 = wm_data.index(x)
+        ind2 = wt_data.index(y)
+
+        # draw horizontal slice data
+        horiz_x = wm_data
+        int1 = int_data[ind2]
+
+        ax1.clear()
+        ax1.plot(horiz_x,int1)
+        
+        # draw vertical slice data
+        vert_y = wt_data
+        int2 = []
+        for i in range(len(wt_data)):
+            int2.append(int_data[i][ind1])
+        
+        ax2.clear()
+        ax2.plot(int2,vert_y)
+
+        # finally draw the slice graphs
+        canvas.draw()
+
 
 #####################  GUI code #############################
 window_main = tkinter.Tk()
@@ -348,6 +441,7 @@ toolbar = NavigationToolbar2Tk(canvas,window_main)
 toolbar.update()
 toolbar.pack(side=tkinter.BOTTOM,fill=tkinter.X)
 canvas.get_tk_widget().place(x=350,y=50)
+canvas.get_tk_widget().bind("<Button-1>",callback)
 
 # main loop. need for maintaining the window
 window_main.mainloop()
