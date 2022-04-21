@@ -52,7 +52,16 @@ mouse position is automatically changed to coordinates of spectrum and then slic
 
 -----------------------------------------------------------------------------------
 
-3. defense_game
+3. phasing
+
+This code is written for phasing 2DIR data.
+A lot of functions are not embodied yet, so explanation of this code will be added later.
+
+(Now, only FFT and interpolation of data are embodied..  Maybe it will take long time to complete this code)
+
+-----------------------------------------------------------------------------------
+
+4. defense_game
 
 development of this code is stopped.
 I wanted to make a defense game, but I realized that many many image files are necessary to make this kind of game..
