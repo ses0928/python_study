@@ -27,8 +27,15 @@ This is phasing code for data of 2DIR spectra
    Two ranges will be assigned after loading M file. Be careful not to set the range out of loaded ranges.
    After interpolation, 2D spectrum of real part of sum of pre and post data will be plotted
 
+5. Phasing
+   1) Tw value should be selected before phasing
+   2) Pump-Probe data should be also loaded to see the matching of pump-probe spectrum and 2DIR w_m projection spectrum
+   3) After setting Tw and loading Pump-Probe data, changing four values (1-2 timing, 3-LO timing, chirp 1, chirp 2)
+      affects to 2DIR spectrum of chosen Tw value and 2DIR w_m projection spectrum.
+      Chi-square value of two spectrum (Pump-Prbe spectrum, 2DIR w_m projection spectrum) is also updated.
+
 --- Problems ---
-1. 2DIR w_m projection : Maybe I misunderstood the structure of data box..
+* Auto phasing : I should build a function to minimize
 '''
 
 # data container
@@ -168,7 +175,8 @@ def openMfile():
     entry_w1_ub.insert(0,str(round(max(raw_data[0].pre[0][1:]))))
 
     # wm_freq setting. on 2D data of SPE sample (C=O mode), 1797 ~ 1665.
-    wm_freq = raw_data[0].pre[0][1:]
+    wm_freq = np.array(raw_data[0].pre[0][1:])
+    wm_freq = np.round(wm_freq)
 
     # option Tw, freq update
     temp_tw_box = []
@@ -446,7 +454,7 @@ def interp():
 
         # flip wm_freq
         if min(wm_freq) != wm_freq[0]:
-            wm_freq.reverse()
+            wm_freq = np.flip(wm_freq)
 
         # rearrangement of data - 1
         for i in range(len(raw_data)):
@@ -520,6 +528,10 @@ def interp():
                 raw_data[i].fft_post = np.array(z_post_real) + np.array(z_post_imag)*complex(0,1)
 
                 print(f"interpolation : {(i+1)/len(raw_data)*100} %")
+            
+            for i in range(len(raw_data)):
+                raw_data[i].fft_pre = raw_data[i].fft_pre.T
+                raw_data[i].fft_post = raw_data[i].fft_post.T
 
         elif method == "Rbf":
             # new interpolation part with Rbf function : Really slow for 2D data, but much more accurate.
@@ -619,7 +631,7 @@ def phaser(damn):
         data_pre = data_pre*np.exp(complex(0,1)*FCONV*(wm_axis*dt3LO-w1_axis*dt12+wm_axis_d*w1_axis*c1+c2*w1_axis*w1_axis*wm_axis_d*wm_axis_d*FCONV))
         data_post = data_post*np.exp(complex(0,1)*FCONV*(wm_axis*dt3LO+w1_axis*dt12+wm_axis_d*w1_axis*c1+c2*w1_axis*w1_axis*wm_axis_d*wm_axis_d*FCONV))
 
-        data_sum = data_pre + data_post
+        data_sum = (data_pre + data_post)/2
 
         # data plot
         ax_2d.clear()
@@ -634,7 +646,8 @@ def phaser(damn):
             temp_box = abs(data_sum)
             max_box = []
             for i in range(len(temp_box)):
-                max_box.append(max(temp_box[i]))
+                no_nan_line = temp_box[i][np.isfinite(temp_box[i])]
+                max_box.append(max(no_nan_line))
             
             max_value = max(max_box)
             max_ind = np.where(temp_box==max_value)
@@ -647,7 +660,7 @@ def phaser(damn):
                 temp_box.append(data_sum[i][ind2])
 
             temp_box = np.array(temp_box).real
-            temp_box = temp_box/max(temp_box)
+            temp_box = temp_box/max(abs(temp_box))
 
             try:
                 diff_box = pp_data - temp_box
@@ -665,7 +678,7 @@ def phaser(damn):
             else:
                 ax_pp2.plot(wm_range,temp_box,'r',wm_range,pp_data,'b')
 
-            label_chi2['text'] = f"Chi-square : {chi2}"
+            label_chi2['text'] = f"Chi-square : {chi2:.3f}"
             canvas.draw()
 
         # Print out that 2D spectrum update is complete
@@ -677,6 +690,7 @@ def phaser(damn):
     
     else:
         print("Do interpolation before phasing the data")
+
 
 ####################### GUI Code ##########################
 window_main = tkinter.Tk()
