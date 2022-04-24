@@ -1,6 +1,7 @@
 __pycache__
 ad_communist
 build
+defense_game
 opt_class
 USSR_simulator
 
@@ -14,8 +15,9 @@ brute_9mini.py
 cardscore.py
 codingdojang.py
 copy_USSR_simulator.py
-DIY_defense_game.txt
+defense_game.py
 dfs_bfs.py
+DIY_defense_game.txt
 explosion.png
 explosion.webp
 mushroom.jpg
