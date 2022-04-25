@@ -2,6 +2,7 @@
 import math
 import numpy as np
 from scipy import interpolate
+from scipy import optimize
 
 # from logging import root
 import sys
@@ -35,7 +36,9 @@ This is phasing code for data of 2DIR spectra
       Chi-square value of two spectrum (Pump-Prbe spectrum, 2DIR w_m projection spectrum) is also updated.
 
 --- Problems ---
-* Auto phasing : I should build a function to minimize
+1. 2DIR w_m projection : Somewhat strange..
+    Auto phasing + phasing itself : min chi^2 value still exceeds 2.0 ... (It should be smaller than 1, according to MATLAB code)
+2. Full automatic phasing : After solving first problem, I need to make full auto phasing function.
 '''
 
 # data container
@@ -604,6 +607,7 @@ def phaser(damn):
     global interp_flag
     global work_flag
     global pp_flag
+    global diff_flag
 
     if interp_flag and work_flag==False:
         print("phasing parameter modification detected")
@@ -653,14 +657,14 @@ def phaser(damn):
             max_ind = np.where(temp_box==max_value)
             [ind1,ind2] = [max_ind[0][0],max_ind[1][0]]
 
-            # calculating chi^2
+            # calculating chi^2 : default = max(abs(temp_box))
             chi2 = 0
             temp_box = []
             for i in range(len(data_sum)):
                 temp_box.append(data_sum[i][ind2])
 
             temp_box = np.array(temp_box).real
-            temp_box = temp_box/max(abs(temp_box))
+            temp_box = temp_box/max(temp_box)
 
             try:
                 diff_box = pp_data - temp_box
@@ -691,6 +695,123 @@ def phaser(damn):
     else:
         print("Do interpolation before phasing the data")
 
+# function to minimize
+def chi_square(t_set,x,y,w1_box,wm_box,ind1,ind2):
+    global pp_data
+
+    # 1. set data
+    [t12,t3LO,chirp1,chirp2] = t_set
+
+    FCONV = 1.883*10**(-4)
+    w1_box = np.array(w1_box)
+    wm_box = np.array(wm_box)
+    wm_box_d = np.array(wm_box)
+    wm_box_d = (wm_box_d-np.mean(wm_box_d))/abs(max(wm_box_d)-min(wm_box_d))
+
+    w1 = float(w1_box[ind2])
+    w_m = wm_box[ind2]
+    wm_d = wm_box_d[ind2]
+
+    temp_box_pre=np.array(x)
+    temp_box_post=np.array(y)
+
+    # 2. phasing
+    #temp_box_pre = temp_box_pre*np.exp(complex(0,1)*FCONV*(w_m*t3LO-w1_box*t12+wm_d*w1_box*chirp1+chirp2*w1_box*w1_box*wm_d*wm_d*FCONV))
+    #temp_box_post = temp_box_post*np.exp(complex(0,1)*FCONV*(w_m*t3LO+w1_box*t12+wm_d*w1_box*chirp1+chirp2*w1_box*w1_box*wm_d*wm_d*FCONV))
+    temp_box_pre = temp_box_pre*np.exp(complex(0,1)*FCONV*(wm_box*t3LO-w1*t12+wm_box_d*w1*chirp1+chirp2*w1*w1*wm_box_d*wm_box_d*FCONV))
+    temp_box_post = temp_box_post*np.exp(complex(0,1)*FCONV*(wm_box*t3LO+w1*t12+wm_box_d*w1*chirp1+chirp2*w1*w1*wm_box_d*wm_box_d*FCONV))
+    temp_box_sum = np.array(temp_box_pre) + np.array(temp_box_post)
+    temp_box_sum = np.array(temp_box_sum[np.isfinite(temp_box_sum)]).real
+
+    # 3. calculating chi^2 : default = max(abs(temp_box_sum))
+    temp_box_sum = temp_box_sum/max(temp_box_sum)
+
+    diff_ind = len(temp_box_sum) - len(pp_data)
+    if diff_ind ==2:
+        diff_box = pp_data - temp_box_sum[1:-1]
+    else:
+        print("Error? size of temp_box_sum is strange. please check")
+        diff_box = pp_data - temp_box_sum[diff_ind:]
+
+    chi2 = 0
+    for i in range(len(diff_box)):
+        chi2 += diff_box[i]**2
+
+    return chi2
+    
+# To see minimization progress
+def call(info):
+    print(f"t12 : {info[0]}, t3LO : {info[1]}, chirp 1 : {info[2]}, chirp 2 : {info[3]}")
+
+
+def auto_phasing():
+    global raw_data
+    global w1_range
+    global wm_range
+    global pp_data
+
+    global pp_flag
+    global diff_flag
+
+    if pp_flag:
+        # Select Tw (data)
+        menu_tw = op_menu_phasing_tw['menu']
+        Tw = var_tw.get()
+        ind1 = menu_tw.index(Tw)
+
+        data_pre = np.array(raw_data[ind1].fft_pre)
+        data_post = np.array(raw_data[ind1].fft_post)
+        data_sum = (data_pre + data_post)/2
+
+        # find maximum value of data_sum
+        temp_box = abs(data_sum)
+        max_box = []
+        for i in range(len(temp_box)):
+            no_nan_line = temp_box[i][np.isfinite(temp_box[i])]
+            max_box.append(max(no_nan_line))
+            
+        max_value = max(max_box)
+        max_ind = np.where(temp_box==max_value)
+        [ind1,ind2] = [max_ind[0][0],max_ind[1][0]]
+
+        # set data box
+        box_pre = []
+        box_post = []
+
+        for i in range(len(data_sum)):
+            box_pre.append(data_pre[i][ind2])
+            box_post.append(data_post[i][ind2])
+        
+        # get initial values
+        dt12 = float(entry_t12.get())
+        dt3LO = float(entry_t3LO.get())
+        c1 = float(entry_c1.get())
+        c2 = float(entry_c2.get())
+        tc_set = np.array([dt12,dt3LO,c1,c2])
+        bounds = ((1,4),(0,10),(0,50),(-50,50))
+
+        result=optimize.minimize(chi_square,tc_set,args=(box_pre,box_post,w1_range,wm_range,ind1,ind2),method='TNC',bounds=bounds,callback=call,options={'eps':1e-12,'maxiter':5000,'maxfun':15000,'stepmx':0.01})
+        
+        xopt = result.x
+        fopt = result.fun
+
+        # update chi^2 and other values
+        label_chi2['text'] = f"Chi-square : {fopt:.3f}"
+
+        entry_t12.delete(0,'end')
+        entry_t3LO.delete(0,'end')
+        entry_c1.delete(0,'end')
+        entry_c2.delete(0,'end')
+    
+        entry_t12.insert(0,str(round(xopt[0],2)))
+        entry_t3LO.insert(0,str(round(xopt[1],2)))
+        entry_c1.insert(0,str(round(xopt[2],2)))
+        entry_c2.insert(0,str(round(xopt[3],2)))
+
+        print("-------- Phasing complete --------")
+
+    else:
+        print("Load Pump-Probe data first")
 
 ####################### GUI Code ##########################
 window_main = tkinter.Tk()
@@ -817,6 +938,8 @@ op_menu_phasing_tw.pack()
 button_pp = tkinter.Button(window_main,text="Load pump-probe data",command=open_pp)
 label_chi2 = ttk.Label(window_main,text="Chi-square :")
 
+button_run = tkinter.Button(window_main,text="Run auto phasing",command=auto_phasing)
+
 ### Place button, label, input, ...
 button_open.place(x=20,y=50)
 button_fft.place(x=20,y=150)
@@ -864,6 +987,8 @@ canvas1.create_window(200,420,window=entry_c2)
 
 button_pp.place(x=20,y=445)
 label_chi2.place(x=180,y=450)
+
+button_run.place(x=20,y=480)
 
 # Show M filename
 label_M.pack(side=tkinter.TOP)
