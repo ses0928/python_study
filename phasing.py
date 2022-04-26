@@ -29,15 +29,18 @@ This is phasing code for data of 2DIR spectra
    After interpolation, 2D spectrum of real part of sum of pre and post data will be plotted
 
 5. Phasing
-   1) Tw value should be selected before phasing
-   2) Pump-Probe data should be also loaded to see the matching of pump-probe spectrum and 2DIR w_m projection spectrum
-   3) After setting Tw and loading Pump-Probe data, changing four values (1-2 timing, 3-LO timing, chirp 1, chirp 2)
+    1) Tw value should be selected before phasing
+    2) Pump-Probe data should be also loaded to see the matching of pump-probe spectrum and 2DIR w_m projection spectrum
+    3) After setting Tw and loading Pump-Probe data, changing four values (1-2 timing, 3-LO timing, chirp 1, chirp 2)
       affects to 2DIR spectrum of chosen Tw value and 2DIR w_m projection spectrum.
       Chi-square value of two spectrum (Pump-Prbe spectrum, 2DIR w_m projection spectrum) is also updated.
+      
+    4) When four values (1-2 timing, 3-LO timing, chirp 1, chirp 2) are prepared, automatic phasing can be done by clicking
+      the 'Run auto phasing' button. minimize function of scipy.optimize minimizes the chi-square value and return
+      timing, chirp values, and the minimized chi-square value.
 
 --- Problems ---
-1. 2DIR w_m projection : Somewhat strange..
-    Auto phasing + phasing itself : min chi^2 value still exceeds 2.0 ... (It should be smaller than 1, according to MATLAB code)
+1. Correct the chi-square value : Still different from the MATLAB code. I don't know why...
 2. Full automatic phasing : After solving first problem, I need to make full auto phasing function.
 '''
 
@@ -598,7 +601,7 @@ def interp_plot():
         print("Do interpolation first")
 
 ### phasing code : 
-def phaser(damn):
+def phaser(ischanged):
     global raw_data
     global w1_range
     global wm_range
@@ -646,6 +649,7 @@ def phaser(damn):
         # if pump-probe data is loaded, plot it also.
         if pp_flag:
             diff_flag = False                       # default : False. It becomes True when len(pp_data) < len(wm_range)
+            '''
             # find maximum value of data_sum
             temp_box = abs(data_sum)
             max_box = []
@@ -656,16 +660,28 @@ def phaser(damn):
             max_value = max(max_box)
             max_ind = np.where(temp_box==max_value)
             [ind1,ind2] = [max_ind[0][0],max_ind[1][0]]
+            '''
 
-            # calculating chi^2 : default = max(abs(temp_box))
+            # temp_box update : container of the sum of w1 lines
+            temp_box = [] 
+            for i in range(len(data_sum)):
+                no_nan_line = data_sum[i][np.isfinite(data_sum[i])]
+                no_nan_sum = sum(no_nan_line)
+                temp_box.append(no_nan_sum)
+
+            # calculating chi^2 : default = max(abs(temp_box)), append ind2
             chi2 = 0
-            temp_box = []
+            temp_box = np.array(temp_box).real
+            temp_box = temp_box/max(temp_box)
+            '''
             for i in range(len(data_sum)):
                 temp_box.append(data_sum[i][ind2])
 
             temp_box = np.array(temp_box).real
             temp_box = temp_box/max(temp_box)
+            '''
 
+            # length check and compensation
             try:
                 diff_box = pp_data - temp_box
             except:
@@ -696,7 +712,7 @@ def phaser(damn):
         print("Do interpolation before phasing the data")
 
 # function to minimize
-def chi_square(t_set,x,y,w1_box,wm_box,ind1,ind2):
+def chi_square(t_set,x,y,w1_box,wm_box):
     global pp_data
 
     # 1. set data
@@ -705,33 +721,35 @@ def chi_square(t_set,x,y,w1_box,wm_box,ind1,ind2):
     FCONV = 1.883*10**(-4)
     w1_box = np.array(w1_box)
     wm_box = np.array(wm_box)
-    wm_box_d = np.array(wm_box)
-    wm_box_d = (wm_box_d-np.mean(wm_box_d))/abs(max(wm_box_d)-min(wm_box_d))
-
-    w1 = float(w1_box[ind2])
-    w_m = wm_box[ind2]
-    wm_d = wm_box_d[ind2]
+    wm_box_d = (wm_box-np.mean(wm_box))/abs(max(wm_box)-min(wm_box))
 
     temp_box_pre=np.array(x)
     temp_box_post=np.array(y)
 
+    [w1_axis,wm_axis] = np.meshgrid(w1_box,wm_box)
+    [w1_axis2,wm_axis_d] = np.meshgrid(w1_box,wm_box_d)
+
     # 2. phasing
-    #temp_box_pre = temp_box_pre*np.exp(complex(0,1)*FCONV*(w_m*t3LO-w1_box*t12+wm_d*w1_box*chirp1+chirp2*w1_box*w1_box*wm_d*wm_d*FCONV))
-    #temp_box_post = temp_box_post*np.exp(complex(0,1)*FCONV*(w_m*t3LO+w1_box*t12+wm_d*w1_box*chirp1+chirp2*w1_box*w1_box*wm_d*wm_d*FCONV))
-    temp_box_pre = temp_box_pre*np.exp(complex(0,1)*FCONV*(wm_box*t3LO-w1*t12+wm_box_d*w1*chirp1+chirp2*w1*w1*wm_box_d*wm_box_d*FCONV))
-    temp_box_post = temp_box_post*np.exp(complex(0,1)*FCONV*(wm_box*t3LO+w1*t12+wm_box_d*w1*chirp1+chirp2*w1*w1*wm_box_d*wm_box_d*FCONV))
-    temp_box_sum = np.array(temp_box_pre) + np.array(temp_box_post)
-    temp_box_sum = np.array(temp_box_sum[np.isfinite(temp_box_sum)]).real
+    temp_box_pre = temp_box_pre*np.exp(complex(0,1)*FCONV*(wm_axis*t3LO-w1_axis*t12+wm_axis_d*w1_axis*chirp1+chirp2*w1_axis*w1_axis*wm_axis_d*wm_axis_d*FCONV))
+    temp_box_post = temp_box_post*np.exp(complex(0,1)*FCONV*(wm_axis*t3LO+w1_axis*t12+wm_axis_d*w1_axis*chirp1+chirp2*w1_axis*w1_axis*wm_axis_d*wm_axis_d*FCONV))
+    temp_box_sum = (np.array(temp_box_pre) + np.array(temp_box_post))/2
 
-    # 3. calculating chi^2 : default = max(abs(temp_box_sum))
-    temp_box_sum = temp_box_sum/max(temp_box_sum)
+    temp_box = []
+    for i in range(len(temp_box_sum)):
+        no_nan_line = temp_box_sum[i][np.isfinite(temp_box_sum[i])]
+        no_nan_sum = sum(no_nan_line)
+        temp_box.append(no_nan_sum)
 
-    diff_ind = len(temp_box_sum) - len(pp_data)
+    # 3. calculating chi^2
+    temp_box = np.array(temp_box).real
+    temp_box = temp_box/max(temp_box)
+
+    diff_ind = len(temp_box) - len(pp_data)
     if diff_ind ==2:
-        diff_box = pp_data - temp_box_sum[1:-1]
+        diff_box = pp_data - temp_box[1:-1]
     else:
         print("Error? size of temp_box_sum is strange. please check")
-        diff_box = pp_data - temp_box_sum[diff_ind:]
+        diff_box = pp_data - temp_box[diff_ind:]
 
     chi2 = 0
     for i in range(len(diff_box)):
@@ -761,26 +779,6 @@ def auto_phasing():
 
         data_pre = np.array(raw_data[ind1].fft_pre)
         data_post = np.array(raw_data[ind1].fft_post)
-        data_sum = (data_pre + data_post)/2
-
-        # find maximum value of data_sum
-        temp_box = abs(data_sum)
-        max_box = []
-        for i in range(len(temp_box)):
-            no_nan_line = temp_box[i][np.isfinite(temp_box[i])]
-            max_box.append(max(no_nan_line))
-            
-        max_value = max(max_box)
-        max_ind = np.where(temp_box==max_value)
-        [ind1,ind2] = [max_ind[0][0],max_ind[1][0]]
-
-        # set data box
-        box_pre = []
-        box_post = []
-
-        for i in range(len(data_sum)):
-            box_pre.append(data_pre[i][ind2])
-            box_post.append(data_post[i][ind2])
         
         # get initial values
         dt12 = float(entry_t12.get())
@@ -788,9 +786,9 @@ def auto_phasing():
         c1 = float(entry_c1.get())
         c2 = float(entry_c2.get())
         tc_set = np.array([dt12,dt3LO,c1,c2])
-        bounds = ((1,4),(0,10),(0,50),(-50,50))
+        bounds = ((1,4),(0,10),(-50,50),(-50,50))     # should be changed to user inputs
 
-        result=optimize.minimize(chi_square,tc_set,args=(box_pre,box_post,w1_range,wm_range,ind1,ind2),method='TNC',bounds=bounds,callback=call,options={'eps':1e-12,'maxiter':5000,'maxfun':15000,'stepmx':0.01})
+        result=optimize.minimize(chi_square,tc_set,args=(data_pre,data_post,w1_range,wm_range),method='TNC',bounds=bounds,callback=call,options={'eps':1e-12,'maxiter':5000,'maxfun':15000,'stepmx':0.01})
         
         xopt = result.x
         fopt = result.fun
