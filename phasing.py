@@ -1,5 +1,4 @@
 # for mathematical calculation
-import math
 import numpy as np
 from scipy import interpolate
 from scipy import optimize
@@ -9,7 +8,7 @@ import sys
 
 # for GUI
 import tkinter
-from tkinter import (StringVar, filedialog,ttk)
+from tkinter import (filedialog,ttk)
 
 # for graph drawing
 from matplotlib import pyplot as plt
@@ -38,10 +37,13 @@ This is phasing code for data of 2DIR spectra
     4) When four values (1-2 timing, 3-LO timing, chirp 1, chirp 2) are prepared, automatic phasing can be done by clicking
       the 'Run auto phasing' button. minimize function of scipy.optimize minimizes the chi-square value and return
       timing, chirp values, and the minimized chi-square value.
+    5) You can also perform phasing for all data at once, by clicking full auto phasing button.
+      This function will save all phasing data to data container. (raw_data)
 
 --- Problems ---
 1. Correct the chi-square value : Still different from the MATLAB code. I don't know why...
-2. Full automatic phasing : After solving first problem, I need to make full auto phasing function.
+2. minimization bounds : Get user inputs and use it.
+3. Save data button : I should build this function as soon as possible..
 '''
 
 # data container
@@ -51,20 +53,22 @@ raw_data = []
 loaded_tw = ("0.0")
 loaded_freq = ("1767")
 
-# interpolation flag.  Only when interpolation is finished, it becomes True.
+# interpolation flag.  Only when interpolation is finished, it becomes True
 # working flag : If phasing is in progress, it becomes True
+# pump-probe flag : When Pump-Probe data is loaded, it becomes True
 interp_flag = False
 work_flag = False
 pp_flag = False
 
 # data box class in container
 class data_box():
-    def __init__(self,Tw,pre=[],post=[],fft_pre=[],fft_post=[]):
+    def __init__(self,Tw,pre=[],post=[],fft_pre=[],fft_post=[],phased_sum=[]):
         self.Tw = Tw
         self.pre = pre
         self.post = post
         self.fft_pre = fft_pre
         self.fft_post = fft_post
+        self.phased_sum = phased_sum
     
     def swap(self,target):
         if target == "pre":
@@ -167,7 +171,7 @@ def openMfile():
         post_file.close()
 
         # appending data boxes to raw_data
-        raw_data.append(data_box(M_box[2*i][1],temp_pre,temp_post,[],[]))
+        raw_data.append(data_box(M_box[2*i][1],temp_pre,temp_post,[],[],[]))
     
     # get w_m, w_1 range
     entry_wm_lb.delete(0,'end')
@@ -242,28 +246,38 @@ def open_pp():
     
         f.close()
 
-        index = 0  # zero time
+        index_box = []  # zero time
+        k = 1           # index for raw_data
         for i in range(len(pp_data)):
             pp_data[i][-1] = pp_data[i][-1].split("\n")[0]
             
             for j in range(len(pp_data[0])):
                 pp_data[i][j] = float(pp_data[i][j])
             
-            if i>1 and pp_data[i][0] == 0:
-                index = i    
-    
-        # interpolation and data update
-        pp_f = interpolate.interp1d(pp_data[0][1:],pp_data[index][1:],kind='cubic')
-        try:
-            pp_data = pp_f(wm_range)
-        except:
-            try:
-                pp_data = pp_f(wm_range[1:-1])
-            except:
-                print("Use smaller range of w$_m$")
+            if i>1 and abs(float(raw_data[-k].Tw)+pp_data[i][0]) < 0.02:
+                index_box.append(i)
+                k += 1
 
-        pp_data = np.array(pp_data)
-        pp_data = pp_data/max(pp_data)
+            if k > len(raw_data):
+                break
+
+        # interpolation and data update
+        index_box.reverse()
+        temp_pp_data = []
+        for i in range(len(index_box)):
+            pp_f = interpolate.interp1d(pp_data[0][1:],pp_data[index_box[i]][1:],kind='cubic')
+            try:
+                temp_pp_data.append(pp_f(wm_range))
+            except:
+                try:
+                    temp_pp_data.append(pp_f(wm_range[1:-1]))
+                except:
+                    print("Use smaller range of w$_m$")
+
+        pp_data = np.array(temp_pp_data)
+        for i in range(len(pp_data)):
+            pp_data[i] = pp_data[i]/max(pp_data[i])
+        
         pp_flag = True
         print("Pump-probe data is loaded")
     
@@ -683,9 +697,9 @@ def phaser(ischanged):
 
             # length check and compensation
             try:
-                diff_box = pp_data - temp_box
+                diff_box = pp_data[ind1] - temp_box
             except:
-                diff_box = pp_data - temp_box[1:-1]
+                diff_box = pp_data[ind1] - temp_box[1:-1]
                 diff_flag = True
 
             for i in range(len(diff_box)):
@@ -694,9 +708,9 @@ def phaser(ischanged):
             # drawing
             ax_pp2.clear()
             if diff_flag:
-                ax_pp2.plot(wm_range,temp_box,'r',wm_range[1:-1],pp_data,'b')
+                ax_pp2.plot(wm_range,temp_box,'r',wm_range[1:-1],pp_data[ind1],'b')
             else:
-                ax_pp2.plot(wm_range,temp_box,'r',wm_range,pp_data,'b')
+                ax_pp2.plot(wm_range,temp_box,'r',wm_range,pp_data[ind1],'b')
 
             label_chi2['text'] = f"Chi-square : {chi2:.3f}"
             canvas.draw()
@@ -712,7 +726,7 @@ def phaser(ischanged):
         print("Do interpolation before phasing the data")
 
 # function to minimize
-def chi_square(t_set,x,y,w1_box,wm_box):
+def chi_square(t_set,x,y,w1_box,wm_box,ind1):
     global pp_data
 
     # 1. set data
@@ -744,12 +758,12 @@ def chi_square(t_set,x,y,w1_box,wm_box):
     temp_box = np.array(temp_box).real
     temp_box = temp_box/max(temp_box)
 
-    diff_ind = len(temp_box) - len(pp_data)
+    diff_ind = len(temp_box) - len(pp_data[ind1])
     if diff_ind ==2:
-        diff_box = pp_data - temp_box[1:-1]
+        diff_box = pp_data[ind1] - temp_box[1:-1]
     else:
         print("Error? size of temp_box_sum is strange. please check")
-        diff_box = pp_data - temp_box[diff_ind:]
+        diff_box = pp_data[ind1] - temp_box[diff_ind:]
 
     chi2 = 0
     for i in range(len(diff_box)):
@@ -761,8 +775,8 @@ def chi_square(t_set,x,y,w1_box,wm_box):
 def call(info):
     print(f"t12 : {info[0]}, t3LO : {info[1]}, chirp 1 : {info[2]}, chirp 2 : {info[3]}")
 
-
-def auto_phasing():
+# auto phasing function.
+def auto_phasing(ind,full=False,tc_box=[]):
     global raw_data
     global w1_range
     global wm_range
@@ -771,11 +785,16 @@ def auto_phasing():
     global pp_flag
     global diff_flag
 
+    global xopt     # for full autommatic phasing
+
     if pp_flag:
         # Select Tw (data)
-        menu_tw = op_menu_phasing_tw['menu']
-        Tw = var_tw.get()
-        ind1 = menu_tw.index(Tw)
+        if full:
+            ind1 = int(ind)
+        else:
+            menu_tw = op_menu_phasing_tw['menu']
+            Tw = var_tw.get()
+            ind1 = menu_tw.index(Tw)
 
         data_pre = np.array(raw_data[ind1].fft_pre)
         data_post = np.array(raw_data[ind1].fft_post)
@@ -785,10 +804,18 @@ def auto_phasing():
         dt3LO = float(entry_t3LO.get())
         c1 = float(entry_c1.get())
         c2 = float(entry_c2.get())
-        tc_set = np.array([dt12,dt3LO,c1,c2])
-        bounds = ((1,4),(0,10),(-50,50),(-50,50))     # should be changed to user inputs
 
-        result=optimize.minimize(chi_square,tc_set,args=(data_pre,data_post,w1_range,wm_range),method='TNC',bounds=bounds,callback=call,options={'eps':1e-12,'maxiter':5000,'maxfun':15000,'stepmx':0.01})
+        if full:
+            if ind1 > 0: tc_set = np.array(tc_box)
+            else:
+                tc_set = np.array([dt12,dt3LO,c1,c2])
+        else:
+            tc_set = np.array([dt12,dt3LO,c1,c2])
+        bounds = ((1,4),(0,15),(-50,50),(-50,50))     # should be changed to user inputs
+
+        # minimization code. callback = call is only for debugging
+        #result=optimize.minimize(chi_square,tc_set,args=(data_pre,data_post,w1_range,wm_range),method='TNC',bounds=bounds,callback=call,options={'eps':1e-12,'maxiter':5000,'maxfun':15000,'stepmx':0.01})
+        result=optimize.minimize(chi_square,tc_set,args=(data_pre,data_post,w1_range,wm_range,ind1),method='TNC',bounds=bounds,options={'eps':1e-12,'maxiter':5000,'maxfun':15000,'stepmx':0.01})
         
         xopt = result.x
         fopt = result.fun
@@ -810,6 +837,94 @@ def auto_phasing():
 
     else:
         print("Load Pump-Probe data first")
+
+def single_phasing():
+    global raw_data
+    global w1_range
+    global wm_range
+    global pp_data
+
+    global pp_flag
+    global diff_flag
+
+    if pp_flag:
+        auto_phasing(0,False)
+    else:
+        print("Load Pump-Probe data first")
+
+
+def full_auto_phasing():
+    global raw_data
+    global w1_range
+    global wm_range
+    global pp_data
+
+    global pp_flag
+    global diff_flag
+
+    global xopt
+    global xopt_set
+
+    if pp_flag:
+        xopt_set = [[]]       # xopt container
+        for i in range(len(raw_data)):
+            # 1. auto phasing for each set.
+            auto_phasing(i,True,xopt_set[0])
+
+            # 2. phasing with optimized time, chirp values
+            dt12 = float(entry_t12.get())
+            dt3LO = float(entry_t3LO.get())
+            c1 = float(entry_c1.get())
+            c2 = float(entry_c2.get())
+
+            data_pre = np.array(raw_data[i].fft_pre)
+            data_post = np.array(raw_data[i].fft_post)
+
+            wm_range_d = np.array(wm_range)
+            wm_range_d = (wm_range_d-np.mean(wm_range_d))/abs(max(wm_range_d)-min(wm_range_d))
+            FCONV = 1.883*10**(-4)      # 2*pi*29979245800/10^15
+
+            [w1_axis,wm_axis] = np.meshgrid(w1_range,wm_range)
+            [w1_axis2,wm_axis_d] = np.meshgrid(w1_range,wm_range_d)
+            data_pre = data_pre*np.exp(complex(0,1)*FCONV*(wm_axis*dt3LO-w1_axis*dt12+wm_axis_d*w1_axis*c1+c2*w1_axis*w1_axis*wm_axis_d*wm_axis_d*FCONV))
+            data_post = data_post*np.exp(complex(0,1)*FCONV*(wm_axis*dt3LO+w1_axis*dt12+wm_axis_d*w1_axis*c1+c2*w1_axis*w1_axis*wm_axis_d*wm_axis_d*FCONV))
+            data_sum = (data_pre + data_post).real/2
+
+            # 3. set phased_sum data on raw_data
+            phased_sum = [[0]]
+            for j in range(len(w1_range)):
+                phased_sum[0].append(w1_range[j])
+        
+            for j in range(len(data_sum)):
+                phased_sum.append([wm_range[j]])
+                for k in range(len(data_sum[0])):
+                    phased_sum[j+1].append(data_sum[j][k])
+        
+            # 4. nan check and delete
+            nan_check = np.isnan(phased_sum[1])
+            nan_ind_box = []
+            for j in range(len(nan_check)):
+                if nan_check[j]:
+                    nan_ind_box.append(j)
+            
+            nan_ind_box.reverse()
+            for j in range(len(phased_sum)):
+                phased_sum[j] = np.delete(phased_sum[j],nan_ind_box)
+
+            # 5. finally, save phasing data to data container and record xopt values to xopt_set
+            raw_data[i].phased_sum = np.array(phased_sum)
+            xopt_set.append(np.array(xopt))
+
+            if i==0:
+                del xopt_set[0]
+        
+            print(f"-------- phasing data of {raw_data[i].Tw} ps is recorded on data container --------")
+    
+        print("-------- Full Automatic Phasing Complete --------")
+    
+    else:
+        print("Load Pump-Probe data first")
+
 
 ####################### GUI Code ##########################
 window_main = tkinter.Tk()
@@ -936,7 +1051,8 @@ op_menu_phasing_tw.pack()
 button_pp = tkinter.Button(window_main,text="Load pump-probe data",command=open_pp)
 label_chi2 = ttk.Label(window_main,text="Chi-square :")
 
-button_run = tkinter.Button(window_main,text="Run auto phasing",command=auto_phasing)
+button_run = tkinter.Button(window_main,text="Run auto phasing",command=single_phasing)
+button_full_run = tkinter.Button(window_main,text="Full auto phasing",command=full_auto_phasing)
 
 ### Place button, label, input, ...
 button_open.place(x=20,y=50)
@@ -987,6 +1103,7 @@ button_pp.place(x=20,y=445)
 label_chi2.place(x=180,y=450)
 
 button_run.place(x=20,y=480)
+button_full_run.place(x=180,y=480)
 
 # Show M filename
 label_M.pack(side=tkinter.TOP)
