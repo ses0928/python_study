@@ -811,7 +811,17 @@ def auto_phasing(ind,full=False,tc_box=[]):
                 tc_set = np.array([dt12,dt3LO,c1,c2])
         else:
             tc_set = np.array([dt12,dt3LO,c1,c2])
-        bounds = ((1,4),(0,15),(-50,50),(-50,50))     # should be changed to user inputs
+
+        # bounds setting
+        t12_lb = float(entry_t12_lb.get())
+        t12_ub = float(entry_t12_ub.get())
+        t3LO_lb = float(entry_t3LO_lb.get())
+        t3LO_ub = float(entry_t3LO_ub.get())
+        c1_lb = float(entry_c1_lb.get())
+        c1_ub = float(entry_c1_ub.get())
+        c2_lb = float(entry_c2_lb.get())
+        c2_ub = float(entry_c2_ub.get())
+        bounds = ((t12_lb,t12_ub),(t3LO_lb,t3LO_ub),(c1_lb,c1_ub),(c2_lb,c2_ub))
 
         # minimization code. callback = call is only for debugging
         #result=optimize.minimize(chi_square,tc_set,args=(data_pre,data_post,w1_range,wm_range),method='TNC',bounds=bounds,callback=call,options={'eps':1e-12,'maxiter':5000,'maxfun':15000,'stepmx':0.01})
@@ -852,7 +862,7 @@ def single_phasing():
     else:
         print("Load Pump-Probe data first")
 
-
+# full auto phasing
 def full_auto_phasing():
     global raw_data
     global w1_range
@@ -1018,7 +1028,7 @@ entry_w1_ub.insert(0,"3000")
 entry_res.insert(0,"1")
 
 # labels and inputs for phasing
-label_phasing = ttk.Label(window_main,text="---------------- Phasing part ----------------")
+label_phasing = ttk.Label(window_main,text="---------------- Manual phasing part ----------------")
 
 label_t12 = ttk.Label(window_main,text="1,2 timing :")
 label_t3LO = ttk.Label(window_main,text="3,LO timing :")
@@ -1050,6 +1060,38 @@ op_menu_phasing_tw.pack()
 
 button_pp = tkinter.Button(window_main,text="Load pump-probe data",command=open_pp)
 label_chi2 = ttk.Label(window_main,text="Chi-square :")
+
+# auto phasing range
+label_auto_phasing = ttk.Label(window_main,text="---------------- Auto phasing part ----------------")
+label_t12_r = ttk.Label(window_main,text="1-2 timing range :")
+label_t3LO_r = ttk.Label(window_main,text="3-LO timing range :")
+label_c1_r = ttk.Label(window_main,text="chirp 1 range :")
+label_c2_r = ttk.Label(window_main,text="chirp 2 range :")
+
+entry_t12_lb = tkinter.Entry(window_main,width=5)
+entry_t3LO_lb = tkinter.Entry(window_main,width=5)
+entry_c1_lb = tkinter.Entry(window_main,width=5)
+entry_c2_lb = tkinter.Entry(window_main,width=5)
+
+entry_t12_lb.insert(0,"1")
+entry_t3LO_lb.insert(0,"0")
+entry_c1_lb.insert(0,"-50")
+entry_c2_lb.insert(0,"-50")
+
+label_tilde_r1 = ttk.Label(window_main,text="~")
+label_tilde_r2 = ttk.Label(window_main,text="~")
+label_tilde_r3 = ttk.Label(window_main,text="~")
+label_tilde_r4 = ttk.Label(window_main,text="~")
+
+entry_t12_ub = tkinter.Entry(window_main,width=5)
+entry_t3LO_ub = tkinter.Entry(window_main,width=5)
+entry_c1_ub = tkinter.Entry(window_main,width=5)
+entry_c2_ub = tkinter.Entry(window_main,width=5)
+
+entry_t12_ub.insert(0,"4")
+entry_t3LO_ub.insert(0,"20")
+entry_c1_ub.insert(0,"50")
+entry_c2_ub.insert(0,"50")
 
 button_run = tkinter.Button(window_main,text="Run auto phasing",command=single_phasing)
 button_full_run = tkinter.Button(window_main,text="Full auto phasing",command=full_auto_phasing)
@@ -1086,7 +1128,7 @@ label_res.place(x=40,y=250)
 canvas1.create_window(110,260,window=entry_res)
 
 # Place phasing contents
-label_phasing.place(x=50,y=320)
+label_phasing.place(x=30,y=320)
 
 label_phasing_Tw.place(x=20,y=350)
 op_menu_phasing_tw.place(x=80,y=345)
@@ -1102,8 +1144,31 @@ canvas1.create_window(200,420,window=entry_c2)
 button_pp.place(x=20,y=445)
 label_chi2.place(x=180,y=450)
 
-button_run.place(x=20,y=480)
-button_full_run.place(x=180,y=480)
+# auto phasing part
+label_auto_phasing.place(x=30,y=480)
+
+label_t12_r.place(x=20,y=510)
+label_t3LO_r.place(x=20,y=540)
+label_c1_r.place(x=20,y=570)
+label_c2_r.place(x=20,y=600)
+
+canvas1.create_window(100,520,window=entry_t12_lb)
+canvas1.create_window(100,550,window=entry_t3LO_lb)
+canvas1.create_window(100,580,window=entry_c1_lb)
+canvas1.create_window(100,610,window=entry_c2_lb)
+
+label_tilde_r1.place(x=180,y=510)
+label_tilde_r2.place(x=180,y=540)
+label_tilde_r3.place(x=180,y=570)
+label_tilde_r4.place(x=180,y=600)
+
+canvas1.create_window(190,520,window=entry_t12_ub)
+canvas1.create_window(190,550,window=entry_t3LO_ub)
+canvas1.create_window(190,580,window=entry_c1_ub)
+canvas1.create_window(190,610,window=entry_c2_ub)
+
+button_run.place(x=20,y=630)
+button_full_run.place(x=180,y=630)
 
 # Show M filename
 label_M.pack(side=tkinter.TOP)
