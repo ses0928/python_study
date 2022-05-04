@@ -299,6 +299,26 @@ def draw_fit():
                 fit_subset2 = np.array(A2*w_z2.real/(s2*np.sqrt(2*np.pi))) + para_set[-1]
 
                 fit_result = fit_subset1 + fit_subset2 - para_set[-1]
+            
+            if peak_num == 3:
+                [s1,g1,A1,xc1,s2,g2,A2,xc2,s3,g3,A3,xc3] = para_set[0:12]
+
+                x1 = np.array(xdata_temp)-xc1
+                z1 = (x1+complex(0,1)*g1)/(s1*np.sqrt(2))
+                w_z1 = np.exp(-x1*x1/(s1*np.sqrt(2)))*erfc(-z1*complex(0,1))
+                fit_subset1 = np.array(A1*w_z1.real/(s1*np.sqrt(2*np.pi))) + para_set[-1]
+
+                x2 = np.array(xdata_temp)-xc2
+                z2 = (x2+complex(0,1)*g2)/(s2*np.sqrt(2))
+                w_z2 = np.exp(-x2*x2/(s2*np.sqrt(2)))*erfc(-z2*complex(0,1))
+                fit_subset2 = np.array(A2*w_z2.real/(s2*np.sqrt(2*np.pi))) + para_set[-1]
+
+                x3 = np.array(xdata_temp)-xc3
+                z3 = (x3+complex(0,1)*g3)/(s3*np.sqrt(2))
+                w_z3 = np.exp(-x3*x3/(s3*np.sqrt(2)))*erfc(-z3*complex(0,1))
+                fit_subset3 = np.array(A3*w_z3.real/(s3*np.sqrt(2*np.pi))) + para_set[-1]
+
+                fit_result = fit_subset1 + fit_subset2 + fit_subset3 - 2*para_set[-1]
 
         # draw fitting data
         ax1.plot(xdata_temp,fit_result,color='red')
@@ -471,24 +491,24 @@ def voigt_fit(index):
                 popt, pcov = curve_fit(voigt,xdata_temp,ydata_temp,p0=initial,bounds=(lb_tuple,ub_tuple))
                 popt_p = np.array(popt)/(2*np.pi)
                 print(file_name)
-                print(f"1st peak sigma : {popt_p[0]:.2f}, 1st peak gamma : {popt_p[1]:.2f}, 1st peak area : {popt_p[2]:.2f}, 1st peak position : {popt_p[3]:.2f} cm-1")
+                print(f"1st peak sigma : {popt_p[0]:.2f}, 1st peak gamma : {popt_p[1]:.2f}, 1st peak area : {popt_p[2]:.2f}, 1st peak position : {popt[3]:.2f} cm-1")
                 print(f"background : {popt[-1]:.3f}\n")
             
             elif peak_num == 2:
                 popt, pcov = curve_fit(voigt2p,xdata_temp,ydata_temp,p0=initial,bounds=(lb_tuple,ub_tuple))
                 popt_p = np.array(popt)/(2*np.pi)
                 print(file_name)
-                print(f"1st peak sigma : {popt_p[0]:.2f}, 1st peak gamma : {popt_p[1]:.2f}, 1st peak area : {popt_p[2]:.2f}, 1st peak position : {popt_p[3]:.2f} cm-1")
-                print(f"2nd peak sigma : {popt_p[4]:.2f}, 2nd peak gamma : {popt_p[5]:.2f}, 2nd peak area : {popt_p[6]:.2f}, 2nd peak position : {popt_p[7]:.2f} cm-1")
+                print(f"1st peak sigma : {popt_p[0]:.2f}, 1st peak gamma : {popt_p[1]:.2f}, 1st peak area : {popt_p[2]:.2f}, 1st peak position : {popt[3]:.2f} cm-1")
+                print(f"2nd peak sigma : {popt_p[4]:.2f}, 2nd peak gamma : {popt_p[5]:.2f}, 2nd peak area : {popt_p[6]:.2f}, 2nd peak position : {popt[7]:.2f} cm-1")
                 print(f"background : {popt[-1]:.3f}\n")
 
             elif peak_num == 3:
                 popt, pcov = curve_fit(voigt3p,xdata_temp,ydata_temp,p0=initial,bounds=(lb_tuple,ub_tuple))
                 popt_p = np.array(popt)/(2*np.pi)
                 print(file_name)
-                print(f"1st peak sigma : {popt_p[0]:.2f}, 1st peak gamma : {popt_p[1]:.2f}, 1st peak area : {popt_p[2]:.2f}, 1st peak position : {popt_p[3]:.2f} cm-1")
-                print(f"2nd peak sigma : {popt_p[4]:.2f}, 2nd peak gamma : {popt_p[5]:.2f}, 2nd peak area : {popt_p[6]:.2f}, 2nd peak position : {popt_p[7]:.2f} cm-1")
-                print(f"3rd peak sigma : {popt_p[8]:.2f}, 3rd peak gamma : {popt_p[9]:.2f}, 3rd peak area : {popt_p[10]:.2f}, 3rd peak position : {popt_p[11]:.2f} cm-1")
+                print(f"1st peak sigma : {popt_p[0]:.2f}, 1st peak gamma : {popt_p[1]:.2f}, 1st peak area : {popt_p[2]:.2f}, 1st peak position : {popt[3]:.2f} cm-1")
+                print(f"2nd peak sigma : {popt_p[4]:.2f}, 2nd peak gamma : {popt_p[5]:.2f}, 2nd peak area : {popt_p[6]:.2f}, 2nd peak position : {popt[7]:.2f} cm-1")
+                print(f"3rd peak sigma : {popt_p[8]:.2f}, 3rd peak gamma : {popt_p[9]:.2f}, 3rd peak area : {popt_p[10]:.2f}, 3rd peak position : {popt[11]:.2f} cm-1")
                 print(f"background : {popt[-1]:.3f}\n")
             
             para_set = popt
