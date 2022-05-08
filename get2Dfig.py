@@ -85,7 +85,10 @@ def draw_graph(mode,ind=0):
         # w_m, w_t axis setup + 2D data setup
         xdata = raw_data[0][1:]
         for i in range(len(xdata)):
-            xdata[i] = float(xdata[i])
+            try:
+                xdata[i] = float(xdata[i])
+            except:
+                xdata[i] = float(xdata[i].split("\n")[0])
 
         ydata = []
         for row in raw_data:
@@ -110,7 +113,10 @@ def draw_graph(mode,ind=0):
 
         for i in range(len(zdata)):
             for j in range(len(zdata[0])):
-                zdata[i][j] = float(zdata[i][j])
+                try:
+                    zdata[i][j] = float(zdata[i][j])
+                except:
+                    zdata[i][j] = float(zdata[i][j].split("\n")[0])
 
         # select data
         wm_data = []
@@ -124,24 +130,24 @@ def draw_graph(mode,ind=0):
             wt1 = int(entry_wt_lb.get())
             wt2 = int(entry_wt_ub.get())
         except:
-            wm1 = 1640
-            wm2 = 1820
+            wm1 = 1670
+            wm2 = 1790
             wt1 = 1670
             wt2 = 1790
 
         # append data in selected range to container
         for value in xdata:
-            if wm1 <= value <= wm2:
-                wm_data.append(value)
-        
-        for value in ydata:
             if wt1 <= value <= wt2:
                 wt_data.append(value)
+        
+        for value in ydata:
+            if wm1 <= value <= wm2:
+                wm_data.append(value)
 
-        xind1 = xdata.index(wm1)
-        xind2 = xdata.index(wm2)
-        yind1 = ydata.index(wt1)
-        yind2 = ydata.index(wt2)
+        xind1 = xdata.index(wt1)
+        xind2 = xdata.index(wt2)
+        yind1 = ydata.index(wm1)
+        yind2 = ydata.index(wm2)
 
         for i in range(yind1,yind2+1):
             int_data.append([])
@@ -183,11 +189,11 @@ def draw_graph(mode,ind=0):
             ax_main.contour(xdata,ydata,zdata,levels=num_cl,linewidths=0.5,colors='k')
             ax_main.contourf(xdata,ydata,zdata,levels=num_cl,cmap=scmap)
         else:
-            ax_main.contour(wm_data,wt_data,int_data,levels=num_cl,linewidths=0.5,colors='k')
-            ax_main.contourf(wm_data,wt_data,int_data,levels=num_cl,cmap=scmap)
+            ax_main.contour(wt_data,wm_data,int_data,levels=num_cl,linewidths=0.5,colors='k')
+            ax_main.contourf(wt_data,wm_data,int_data,levels=num_cl,cmap=scmap)
         
-        ax_main.set_xlabel('$\omega_m$ (cm$^{-1}$)')
-        ax_main.set_ylabel('$\omega_t$ (cm$^{-1}$)')
+        ax_main.set_xlabel('$\omega_t$ (cm$^{-1}$)')
+        ax_main.set_ylabel('$\omega_m$ (cm$^{-1}$)')
         canvas.draw()
     
     else:
@@ -358,8 +364,8 @@ ax_main = fig.add_subplot(gs[1:3,0:2])
 ax2 = fig.add_subplot(gs[1:3,2])
 fig.subplots_adjust(left=0.1,top=0.95,wspace=0.4,hspace=0.34)
 
-ax_main.set_xlabel('$\omega_m$ (cm$^{-1}$)')
-ax_main.set_ylabel('$\omega_t$ (cm$^{-1}$)')
+ax_main.set_xlabel('$\omega_t$ (cm$^{-1}$)')
+ax_main.set_ylabel('$\omega_m$ (cm$^{-1}$)')
 
 canvas = FigureCanvasTkAgg(fig,master=window_main)
 canvas.draw()
@@ -386,19 +392,19 @@ option_menu.pack()
 label_Tw = ttk.Label(window_main,text="T_w value")
 
 # range input
-label_wm = ttk.Label(window_main,text=u"w\u2098 (cm\u207B\u00B9) :")
 label_wt = ttk.Label(window_main,text=u"w\u209C (cm\u207B\u00B9) :")
+label_wm = ttk.Label(window_main,text=u"w\u2098 (cm\u207B\u00B9) :")
 label_tilde1 = ttk.Label(window_main,text="~")
 label_tilde2 = ttk.Label(window_main,text="~")
-entry_wm_lb = tkinter.Entry(window_main,width=10)
-entry_wm_ub = tkinter.Entry(window_main,width=10)
 entry_wt_lb = tkinter.Entry(window_main,width=10)
 entry_wt_ub = tkinter.Entry(window_main,width=10)
+entry_wm_lb = tkinter.Entry(window_main,width=10)
+entry_wm_ub = tkinter.Entry(window_main,width=10)
 
-entry_wm_lb.insert(0,"1640")    # set default values (carbonyl stretch)
-entry_wm_ub.insert(0,"1820")
-entry_wt_lb.insert(0,"1670")
+entry_wt_lb.insert(0,"1670")    # set default values (carbonyl stretch)
 entry_wt_ub.insert(0,"1790")
+entry_wm_lb.insert(0,"1670")
+entry_wm_ub.insert(0,"1790")
 
 # input : set the number of contour lines and colormap
 label_cl = ttk.Label(window_main,text="# of contour lines :")
@@ -422,14 +428,14 @@ button_fullplot.place(x=180,y=210)
 button_save.place(x=40,y=240)
 button_saveall.place(x=180,y=240)
 
-label_wm.place(x=40,y=90)
-label_wt.place(x=40,y=120)
-canvas1.create_window(110,100,window=entry_wm_lb)
+label_wt.place(x=40,y=90)
+label_wm.place(x=40,y=120)
+canvas1.create_window(110,100,window=entry_wt_lb)
 label_tilde1.place(x=200,y=90)
-canvas1.create_window(210,100,window=entry_wm_ub)
-canvas1.create_window(110,130,window=entry_wt_lb)
+canvas1.create_window(210,100,window=entry_wt_ub)
+canvas1.create_window(110,130,window=entry_wm_lb)
 label_tilde2.place(x=200,y=120)
-canvas1.create_window(210,130,window=entry_wt_ub)
+canvas1.create_window(210,130,window=entry_wm_ub)
 
 label_cl.place(x=100,y=150)
 canvas1.create_window(190,160,window=entry_cl)
