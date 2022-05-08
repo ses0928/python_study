@@ -56,9 +56,11 @@ loaded_freq = ("1767")
 # interpolation flag.  Only when interpolation is finished, it becomes True
 # working flag : If phasing is in progress, it becomes True
 # pump-probe flag : When Pump-Probe data is loaded, it becomes True
+# full flag : When full auto phasing is complete, it becomes True
 interp_flag = False
 work_flag = False
 pp_flag = False
+full_flag = False
 
 # data box class in container
 class data_box():
@@ -871,9 +873,12 @@ def full_auto_phasing():
 
     global pp_flag
     global diff_flag
+    global full_flag
 
     global xopt
     global xopt_set
+
+    full_flag = False
 
     if pp_flag:
         xopt_set = [[]]       # xopt container
@@ -922,7 +927,7 @@ def full_auto_phasing():
                 phased_sum[j] = np.delete(phased_sum[j],nan_ind_box)
 
             # 5. finally, save phasing data to data container and record xopt values to xopt_set
-            raw_data[i].phased_sum = np.array(phased_sum)
+            raw_data[i].phased_sum = np.array(phased_sum).T
             xopt_set.append(np.array(xopt))
 
             if i==0:
@@ -931,9 +936,38 @@ def full_auto_phasing():
             print(f"-------- phasing data of {raw_data[i].Tw} ps is recorded on data container --------")
     
         print("-------- Full Automatic Phasing Complete --------")
+        full_flag = True
     
     else:
         print("Load Pump-Probe data first")
+
+def savefile():
+    global raw_data
+    global full_flag
+
+    if full_flag:
+        filename = filedialog.asksaveasfilename(title="Save file")
+        for i in range(len(raw_data)):
+            name = f"{filename}={float(raw_data[i].Tw):.1f}ps.dat"
+            ff = open(name,"w")
+
+            for j in range(len(raw_data[i].phased_sum)):
+                for k in range(len(raw_data[i].phased_sum[0])):
+                    if k < len(raw_data[i].phased_sum[0])-1:
+                        item = f"{raw_data[i].phased_sum[j][k]}\t"
+                    else:
+                        item = str(raw_data[i].phased_sum[j][k])
+
+                    ff.write(item)
+                
+                ff.write("\n")
+            
+            ff.close()
+
+        print("-------- Saving full phasing data complete --------")
+
+    else:
+        print("Perform full auto phasing before saving data")
 
 
 ####################### GUI Code ##########################
@@ -1096,6 +1130,8 @@ entry_c2_ub.insert(0,"50")
 button_run = tkinter.Button(window_main,text="Run auto phasing",command=single_phasing)
 button_full_run = tkinter.Button(window_main,text="Full auto phasing",command=full_auto_phasing)
 
+button_save = tkinter.Button(window_main,text="Save full phasing data",command=savefile)
+
 ### Place button, label, input, ...
 button_open.place(x=20,y=50)
 button_fft.place(x=20,y=150)
@@ -1169,6 +1205,8 @@ canvas1.create_window(190,610,window=entry_c2_ub)
 
 button_run.place(x=20,y=630)
 button_full_run.place(x=180,y=630)
+
+button_save.place(x=180,y=660)
 
 # Show M filename
 label_M.pack(side=tkinter.TOP)
